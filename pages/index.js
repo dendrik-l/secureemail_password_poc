@@ -1,65 +1,104 @@
-import Head from 'next/head'
-import styles from '../styles/Home.module.css'
+import { useRouter } from "next/router";
+import { useState } from "react";
+import SingleInputForm from "../components/SingleInputForm";
+
+const INITIAL_STATE = "initial state";
+const EMAIL_SUBMITTED = "email submitted";
+const OTP_SUBMITTED = "otp submitted";
+const SHOW_PASSWORD = "show password";
 
 export default function Home() {
+  const router = useRouter();
+  const targetId = router.query.id;
+  const [state, setState] = useState(INITIAL_STATE);
+  const [token, setToken] = useState();
+  const [password, setPassword] = useState();
+
+  function handleEmailSubmit(emailInput) {
+    //console.log(JSON.stringify({ uuid: targetId, email: emailInput }));
+
+    fetch(process.env.NEXT_PUBLIC_API_ROUTE + "api/otp/new", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ uuid: targetId, email: emailInput }),
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Network response was not okay");
+        }
+        return res.json();
+      })
+      .then((body) => {
+        setToken(body.access_token);
+        setState(EMAIL_SUBMITTED);
+      })
+      .catch((e) => console.log(e));
+  }
+
+  function handleOtpSubmit(otpInput) {
+    //console.log(otpInput);
+    otpInput = parseInt(otpInput);
+
+    fetch(process.env.NEXT_PUBLIC_API_ROUTE + "api/otp/verify", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ otp: otpInput }),
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Network response was not okay");
+        }
+        return res.json();
+      })
+      .then((body) => {
+        setPassword(body.pwd);
+        setState(SHOW_PASSWORD);
+      })
+      .catch((e) => console.log(e));
+  }
+
+  var childToRender;
+
+  switch (state) {
+    case INITIAL_STATE:
+      childToRender = (
+        <SingleInputForm
+          label="Your email: "
+          inputType="email"
+          inputPlaceholder="joe@gmail.com"
+          onSubmit={handleEmailSubmit}
+        ></SingleInputForm>
+      );
+      break;
+    case EMAIL_SUBMITTED:
+      childToRender = (
+        <SingleInputForm
+          label="OTP: "
+          inputType="text"
+          inputPlaceholder="111111"
+          onSubmit={handleOtpSubmit}
+        ></SingleInputForm>
+      );
+      break;
+    case OTP_SUBMITTED:
+      childToRender = <div>{OTP_SUBMITTED}</div>;
+      break;
+    case SHOW_PASSWORD:
+      childToRender = <div>Password: {password}</div>;
+      break;
+    default:
+      console.log("Invalid state");
+  }
+
   return (
-    <div className={styles.container}>
-      <Head>
-        <title>Create Next App</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-      <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
-
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.js</code>
-        </p>
-
-        <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h3>Documentation &rarr;</h3>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h3>Learn &rarr;</h3>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/master/examples"
-            className={styles.card}
-          >
-            <h3>Examples &rarr;</h3>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/import?filter=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-          >
-            <h3>Deploy &rarr;</h3>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
-        </div>
-      </main>
-
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel Logo" className={styles.logo} />
-        </a>
-      </footer>
+    <div>
+      <p>Hi!</p>
+      {childToRender}
     </div>
-  )
+  );
 }
