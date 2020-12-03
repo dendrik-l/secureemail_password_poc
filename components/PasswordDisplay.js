@@ -12,27 +12,25 @@ export default function PasswordDisplay({ password }) {
   const classes = useStyles();
 
   return (
-    <form>
-      <Grid container direction="row" justify="center" alignItems="center">
-        <Grid item>
-          <TextField
-            classes={{
-              root: classes.root,
-            }}
-            style={{ minWidth: 400 }}
-            disabled
-            value={password}
-            variant="outlined"
-            margin="normal"
-            label="Password"
-          />
-        </Grid>
-        <Grid item>
-          <IconButton onClick={(e) => navigator.clipboard.writeText(password)}>
-            <FileCopyRoundedIcon color="primary" />
-          </IconButton>
-        </Grid>
+    <Grid container direction="row" justify="center" alignItems="center">
+      <Grid item>
+        <TextField
+          classes={{
+            root: classes.root,
+          }}
+          style={{ minWidth: 350 }}
+          disabled
+          value={password}
+          variant="outlined"
+          margin="normal"
+          label="Password"
+        />
       </Grid>
-    </form>
+      <Grid item>
+        <IconButton onClick={(e) => navigator.clipboard.writeText(password)}>
+          <FileCopyRoundedIcon color="secondary" />
+        </IconButton>
+      </Grid>
+    </Grid>
   );
 }

@@ -60,7 +60,7 @@ export default function Index({ savedEmails }) {
             <InformationalHeader />
           </Grid>
           <Grid item>
-            <InformationalInstruction />
+            <InformationalInstruction email={unverifiedEmail} />
           </Grid>
         </AppStateContext.Provider>
         <Grid item>
