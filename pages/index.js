@@ -1,104 +1,81 @@
 import { useRouter } from "next/router";
-import { useState } from "react";
-import SingleInputForm from "../components/SingleInputForm";
+import { useState, createContext } from "react";
+import { requestWithEmail, requestWithOtp } from "../api/api";
 
-const INITIAL_STATE = "initial state";
-const EMAIL_SUBMITTED = "email submitted";
-const OTP_SUBMITTED = "otp submitted";
-const SHOW_PASSWORD = "show password";
+import { STATE } from "../const";
+import InformationalHeader from "../components/InformationalHeader";
+import InformationalInstruction from "../components/InformationalInstruction";
+import EmailInputForm from "../components/EmailInputForm";
+import OtpInputForm from "../components/OtpInputForm";
+import PasswordDisplay from "../components/PasswordDisplay";
+import { Container, Grid } from "@material-ui/core";
 
-export default function Home() {
+export const AppStateContext = createContext(STATE.INITIAL_STATE);
+
+export default function Index({ savedEmails }) {
   const router = useRouter();
   const targetId = router.query.id;
-  const [state, setState] = useState(INITIAL_STATE);
   const [token, setToken] = useState();
+  const [appState, setAppState] = useState(STATE.INITIAL_STATE);
+  const [unverifiedEmail, setUnverifiedEmail] = useState();
   const [password, setPassword] = useState();
 
-  function handleEmailSubmit(emailInput) {
-    //console.log(JSON.stringify({ uuid: targetId, email: emailInput }));
-
-    fetch(process.env.NEXT_PUBLIC_API_ROUTE + "api/otp/new", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ uuid: targetId, email: emailInput }),
-    })
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("Network response was not okay");
-        }
-        return res.json();
-      })
-      .then((body) => {
-        setToken(body.access_token);
-        setState(EMAIL_SUBMITTED);
-      })
-      .catch((e) => console.log(e));
+  async function handleEmailSubmit(emailInput) {
+    let response = await requestWithEmail(targetId, emailInput);
+    if (response.status == "ok") {
+      console.log(response);
+      setAppState(STATE.EMAIL_SUBMITTED);
+      setToken(response.body.access_token);
+      setUnverifiedEmail(emailInput);
+    } else {
+      console.log(response.body);
+    }
   }
 
-  function handleOtpSubmit(otpInput) {
-    //console.log(otpInput);
+  async function handleOtpSubmit(otpInput) {
     otpInput = parseInt(otpInput);
-
-    fetch(process.env.NEXT_PUBLIC_API_ROUTE + "api/otp/verify", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ otp: otpInput }),
-    })
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("Network response was not okay");
-        }
-        return res.json();
-      })
-      .then((body) => {
-        setPassword(body.pwd);
-        setState(SHOW_PASSWORD);
-      })
-      .catch((e) => console.log(e));
+    let response = await requestWithOtp(token, otpInput);
+    if (response.status == "ok") {
+      console.log(response);
+      setAppState(STATE.SHOW_PASSWORD);
+      setPassword(response.body.pwd);
+      updateSavedEmails();
+    } else {
+      console.log(response.body);
+    }
   }
 
-  var childToRender;
-
-  switch (state) {
-    case INITIAL_STATE:
-      childToRender = (
-        <SingleInputForm
-          label="Your email: "
-          inputType="email"
-          inputPlaceholder="joe@gmail.com"
-          onSubmit={handleEmailSubmit}
-        ></SingleInputForm>
-      );
-      break;
-    case EMAIL_SUBMITTED:
-      childToRender = (
-        <SingleInputForm
-          label="OTP: "
-          inputType="text"
-          inputPlaceholder="111111"
-          onSubmit={handleOtpSubmit}
-        ></SingleInputForm>
-      );
-      break;
-    case OTP_SUBMITTED:
-      childToRender = <div>{OTP_SUBMITTED}</div>;
-      break;
-    case SHOW_PASSWORD:
-      childToRender = <div>Password: {password}</div>;
-      break;
-    default:
-      console.log("Invalid state");
+  function updateSavedEmails() {
+    localStorage.setItem(
+      "savedEmails",
+      JSON.stringify(Array.from(new Set([...savedEmails, unverifiedEmail])))
+    );
   }
 
   return (
-    <div>
-      <p>Hi!</p>
-      {childToRender}
-    </div>
+    <Container style={{margin: 200}} >
+      <Grid container direction='column' alignItems='center' >
+        <AppStateContext.Provider value={appState}>
+          <Grid item>
+            <InformationalHeader />
+          </Grid>
+          <Grid item>
+            <InformationalInstruction email={unverifiedEmail} />
+          </Grid>
+        </AppStateContext.Provider>
+        <Grid item>
+          {appState == STATE.INITIAL_STATE ? (
+            <EmailInputForm
+              onSubmit={handleEmailSubmit}
+              savedEmails={savedEmails}
+            />
+          ) : appState == STATE.EMAIL_SUBMITTED ? (
+            <OtpInputForm onSubmit={handleOtpSubmit} />
+          ) : appState == STATE.SHOW_PASSWORD ? (
+            <PasswordDisplay password={password} />
+          ) : null}
+        </Grid>
+      </Grid>
+    </Container>
   );
 }
